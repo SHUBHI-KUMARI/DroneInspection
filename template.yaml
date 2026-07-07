@@ -1,0 +1,154 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Drone Inspection Backend
+
+Globals:
+  Function:
+    Runtime: python3.9
+    Timeout: 10
+    MemorySize: 128
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref InspectionTable
+        BUCKET_NAME: !Ref ImageBucket
+
+Resources:
+
+  # ----------------------------------------------------
+  # Storage Resources (DynamoDB Table & S3 Image Bucket)
+  # ----------------------------------------------------
+  InspectionTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: InspectionSystem
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+        - AttributeName: GSI2PK
+          AttributeType: S
+        - AttributeName: GSI2SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1-WarehouseInspections
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: GSI2-DroneInspections
+          KeySchema:
+            - AttributeName: GSI2PK
+              KeyType: HASH
+            - AttributeName: GSI2SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  ImageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "drone-inspection-images-${AWS::AccountId}"
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [PUT, GET]
+            AllowedOrigins: ["*"]
+            AllowedHeaders: ["*"]
+
+  # ----------------------------------------------------
+  # Lambda Serverless Compute Functions
+  # ----------------------------------------------------
+  CreateInspectionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/handlers/
+      Handler: create_inspection.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref InspectionTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /inspections
+            Method: post
+
+  ListByWarehouseFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/handlers/
+      Handler: list_inspections_by_warehouse.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref InspectionTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /warehouses/{warehouse_id}/inspections
+            Method: get
+
+  ListByDroneFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/handlers/
+      Handler: list_inspections_by_drone.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref InspectionTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /drones/{drone_id}/inspections
+            Method: get
+
+  PresignUploadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/handlers/
+      Handler: presign_image_upload.handler
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ImageBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref InspectionTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /inspections/{inspection_id}/images/presign
+            Method: post
+
+  ListImagesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/handlers/
+      Handler: list_images.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref InspectionTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /inspections/{inspection_id}/images
+            Method: get
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint base URL
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
