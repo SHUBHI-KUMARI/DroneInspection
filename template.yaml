@@ -74,8 +74,8 @@ Resources:
   CreateInspectionFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/handlers/
-      Handler: create_inspection.handler
+      CodeUri: src/
+      Handler: handlers/create_inspection.handler
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref InspectionTable
@@ -89,8 +89,8 @@ Resources:
   ListByWarehouseFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/handlers/
-      Handler: list_inspections_by_warehouse.handler
+      CodeUri: src/
+      Handler: handlers/list_inspections_by_warehouse.handler
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref InspectionTable
@@ -104,8 +104,8 @@ Resources:
   ListByDroneFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/handlers/
-      Handler: list_inspections_by_drone.handler
+      CodeUri: src/
+      Handler: handlers/list_inspections_by_drone.handler
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref InspectionTable
@@ -119,8 +119,8 @@ Resources:
   PresignUploadFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/handlers/
-      Handler: presign_image_upload.handler
+      CodeUri: src/
+      Handler: handlers/presign_image_upload.handler
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ImageBucket
@@ -136,8 +136,8 @@ Resources:
   ListImagesFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/handlers/
-      Handler: list_images.handler
+      CodeUri: src/
+      Handler: handlers/list_images.handler
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref InspectionTable
@@ -147,6 +147,7 @@ Resources:
           Properties:
             Path: /inspections/{inspection_id}/images
             Method: get
+
 
 Outputs:
   ApiUrl:
